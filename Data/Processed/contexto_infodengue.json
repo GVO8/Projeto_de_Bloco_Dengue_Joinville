@@ -1,0 +1,16 @@
+{
+  "municipio": "Joinville/SC (geocode 4209102)",
+  "origem_dados": "amostra_local",
+  "semanas": 52,
+  "semanas_por_nivel": {
+    "1": 16,
+    "2": 28,
+    "3": 6,
+    "4": 2
+  },
+  "casos_total": 603,
+  "semana_pico": {
+    "SE": 202623,
+    "casos": 54
+  }
+}
