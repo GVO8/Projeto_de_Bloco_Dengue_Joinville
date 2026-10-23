@@ -1,92 +1,91 @@
-# Dengue em Múltiplas Dimensões (TP2)
+# Dengue em Múltiplas Dimensões (TP3)
 
-TP2 da disciplina de IA Generativa e ESG: evolução do painel que reúne
-dimensões públicas de risco de dengue em Joinville/SC — agora com interface
-interativa, dados em tempo real da API do InfoDengue, notícias coletadas via
-*web scraping* (BeautifulSoup), cache, estado de sessão e serviço de
-upload/download de arquivos.
+Painel de dados de dengue para Joinville/SC: série semanal do InfoDengue (nível de alerta), notícias coletadas por *web scraping*, **API FastAPI** para consulta/envio de dados e preparação dos dados para **LLMs** (próxima etapa). Alinhado ao ODS 3.
 
-O projeto não realiza alerta epidemiológico em tempo real (já bem coberto
-pelo próprio InfoDengue) e não envolve, em nenhuma etapa, contato ou
-validação com órgãos públicos — as "partes interessadas" mencionadas nos
-documentos são hipotéticas.
+O projeto não envolve contato com órgãos públicos; as "partes interessadas" são hipotéticas.
 
-## Estrutura do projeto (padrão TDSP)
+## Estrutura
 
 ```
-dengue-esg-tp2/
-├── .gitignore
+dengue-esg-tp3/
 ├── requirements.txt
-├── README.md
 ├── Code/
+│   ├── api/main.py                  # API FastAPI (4 rotas)
 │   ├── app/
-│   │   └── app.py                            # App Streamlit (abas, cache, sessão, upload/download)
-│   ├── scraping/
-│   │   └── scrape_nsc_dengue.py               # Scraper BeautifulSoup (executar separadamente)
-│   └── utils/
-│       └── infodengue_api.py                  # Cliente da API do InfoDengue
+│   │   ├── app.py                   # Entrada do app + menu de navegação
+│   │   ├── common.py                # Cache e componentes compartilhados
+│   │   └── views/                   # Páginas: inicio, painel, noticias, upload, api_page, llm
+│   ├── scraping/scrape_nsc_dengue.py
+│   ├── llm_prep/                    # prepare_corpus.py + prompts.py
+│   └── utils/                       # infodengue_api.py, data_ops.py, data_service.py
 ├── Data/
-│   ├── Raw/
-│   │   ├── sinan_sample.csv                   # Amostra SINAN (TP1)
-│   │   ├── infodengue_sample.csv              # Fallback local (mesmo schema da API)
-│   │   ├── nsc_noticias_joinville_dengue.csv  # Saída do scraper (metadados)
-│   │   └── nsc_noticias_texto.txt             # Saída do scraper (corpus para nuvem de palavras)
-│   └── Processed/
-├── Docs/
-│   ├── Project/
-│   │   ├── project_charter.md                 # Finalizado
-│   │   └── tdsp_crispdm_mapping.md
-│   ├── DataReport/
-│   │   └── data_summary_report.md             # Finalizado
-│   └── Presentations/
+│   ├── Raw/                         # CSV/TXT coletados + amostras
+│   └── Processed/                   # corpus .jsonl, contexto .json, uploads
+└── Docs/
+    ├── API.md
+    ├── Project/                     # project_charter.md, llm_readiness.md, tdsp_crispdm_mapping.md
+    └── DataReport/                  # data_summary_report.md
 ```
 
-## Como rodar
+## Instalação
 
 ```bash
-# 1. Criar e ativar ambiente virtual
 python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-
-# 2. Instalar dependências
-pip install -r requirements.txt
-
-# 3. (Opcional) Rodar o scraper para atualizar as notícias
-python Code/scraping/scrape_nsc_dengue.py
-
-# 4. Rodar o app
-streamlit run Code/app/app.py
+.venv\Scripts\activate            # Windows (PowerShell)  |  Mac/Linux: source .venv/bin/activate
+python -m pip install -r requirements.txt
 ```
 
-> O app já vem com uma amostra de notícias e um fallback local dos dados do
-> InfoDengue em `Data/Raw/`, então funciona mesmo sem rodar o scraper ou sem
-> internet — mas os dados "ao vivo" só aparecem com conexão ativa.
+## Como os dados chegam ao app (leia antes de executar)
 
-## Controle de versão (Git + GitHub)
+Existem **duas APIs** no projeto, com papéis diferentes:
+
+| | O que é | Você precisa fazer algo? |
+|---|---|---|
+| **API do InfoDengue** | Fonte pública dos dados (internet) | **Não.** O código (`Code/utils/infodengue_api.py`) a consulta sozinho ao abrir o app. Sem internet, usa uma amostra local e avisa na tela. |
+| **API FastAPI do projeto** | Camada opcional que entrega os mesmos dados por rotas HTTP (`/infodengue`, `/noticias`) | **Só se quiser usá-la:** ligue-a em um terminal separado (comando abaixo). |
+
+```
+InfoDengue (internet) --> dados --> [FastAPI, opcional] --> Streamlit
+                                  \_______ (sem API) _______/
+```
+
+- **Nenhum script precisa ser criado** para buscar dados da API.
+- O único script rodado à parte é o **scraper de notícias** (`scrape_nsc_dengue.py`), que apenas atualiza as notícias.
+- Com a FastAPI ligada, as páginas mostram "🟢 Dados obtidos pela API FastAPI"; desligada, "🟡 leitura local". Os dados são os mesmos; só o caminho muda.
+- Para a entrega do TP3, mostre o app com a FastAPI ligada e abra http://127.0.0.1:8000/docs.
+
+## Execução
+
+Todos os comandos na **raiz do projeto**, com o ambiente ativo.
+
+```bash
+# 1) (opcional) coletar notícias atualizadas — precisa de internet
+python Code/scraping/scrape_nsc_dengue.py
+
+# 2) (opcional) regenerar o corpus e o contexto para LLM
+python Code/llm_prep/prepare_corpus.py
+
+# 3) API — terminal 1 (opcional: o app funciona sem ela)
+python -m uvicorn main:app --app-dir Code/api --port 8000
+
+# 4) App — terminal 2
+python -m streamlit run Code/app/app.py
+```
+
+- Swagger da API: http://127.0.0.1:8000/docs (rotas em [`Docs/API.md`](Docs/API.md))
+- O app mostra, em cada página, se os dados vieram da **API** ou de **leitura local**.
+- Sem internet, o app usa uma amostra **sintética** do InfoDengue e avisa na tela.
+
+## Git
 
 ```bash
 git init
 git add .
-git commit -m "TP2: interface dinâmica, scraping NSC Total, API InfoDengue, cache/sessão, upload/download"
-
-# Criar o repositório no GitHub e então:
-git remote add origin <URL_DO_SEU_REPOSITORIO>
+git commit -m "TP3: app multipágina, API FastAPI, preparação para LLM"
+git remote add origin <URL_DO_REPOSITORIO>
 git branch -M main
 git push -u origin main
 ```
 
-O `.gitignore` já está configurado para não versionar ambientes virtuais
-(`.venv/`), caches do Python e arquivos de segredos do Streamlit.
-
-## Preparação para deploy (Streamlit Community Cloud)
-
-1. Suba o repositório para o GitHub (passo acima).
-2. Em [share.streamlit.io](https://share.streamlit.io), aponte para o
-   repositório e defina `Code/app/app.py` como arquivo principal.
-3. O `requirements.txt` na raiz é detectado automaticamente.
-
-## Documentos principais
-
-- [Project Charter](Docs/Project/project_charter.md)
-- [Mapeamento CRISP-DM × TDSP](Docs/Project/tdsp_crispdm_mapping.md)
-- [Data Summary Report](Docs/DataReport/data_summary_report.md)
+## Documentação
+[Project Charter](Docs/Project/project_charter.md) · [Data Summary Report](Docs/DataReport/data_summary_report.md) · [API](Docs/API.md) · [Prontidão para LLM](Docs/Project/llm_readiness.md) · [CRISP-DM × TDSP](Docs/Project/tdsp_crispdm_mapping.md)

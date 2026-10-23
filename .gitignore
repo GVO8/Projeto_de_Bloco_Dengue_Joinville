@@ -1,0 +1,30 @@
+# Ambientes virtuais
+.venv/
+venv/
+env/
+ENV/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+
+# Dados brutos volumosos gerados localmente (opcional — remova esta linha
+# se quiser versionar os CSVs/TXT de Data/Raw junto com o código)
+# Data/Raw/*.csv
+# Data/Raw/*.txt
+
+# Dados enviados pelo usuário em tempo de execução (upload / POST na API)
+Data/Processed/infodengue_uploads.csv
