@@ -28,3 +28,7 @@ Thumbs.db
 
 # Dados enviados pelo usuário em tempo de execução (upload / POST na API)
 Data/Processed/infodengue_uploads.csv
+
+# Modelos de IA baixados (GGUF, ≈2,5 GB) — não versionar
+Models/*
+!Models/.gitkeep
