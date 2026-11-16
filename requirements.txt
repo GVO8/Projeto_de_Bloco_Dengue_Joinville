@@ -1,5 +1,4 @@
-# Versões mínimas (sem travar a versão exata, para o pip escolher pacotes
-# com wheel pronto para a sua versão do Python e evitar compilação).
+# Dependências do projeto (sem a IA local). Versões mínimas: o pip escolhe pacotes com wheel pronto.
 streamlit>=1.36
 pandas>=2.2.3
 requests>=2.32

@@ -1,0 +1,13 @@
+# IA local (modelo Qwen3-4B-Instruct-2507 em GGUF). Instale DEPOIS de requirements.txt.
+#
+# ATENÇÃO: use Python 3.12 (ou 3.11/3.13 para a versão CPU). Não existe versão pronta do
+# llama-cpp-python para Python 3.14: no Windows a instalação tentaria compilar e falharia.
+#
+#   py -3.12 -m venv .venv
+#   .venv\Scripts\activate
+#   python -m pip install -r requirements.txt
+#   python -m pip install -r requirements-llm.txt
+#
+--extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+llama-cpp-python>=0.3
+huggingface_hub>=0.24

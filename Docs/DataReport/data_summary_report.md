@@ -1,4 +1,4 @@
-# Data Summary Report (versão TP3) — Dengue em Múltiplas Dimensões
+# Data Summary Report (versão TP4) — Dengue em Múltiplas Dimensões
 
 ## 1. Visão geral
 
@@ -13,6 +13,7 @@ Todas as fontes são **públicas e gratuitas**. A tabela indica o que está impl
 | Google Earth Engine (satélite) | Documentada, futura | — |
 | IBGE (população) | Documentada, futura | — |
 | Páginas dinâmicas (Selenium) | **Não utilizado** — nenhuma fonte exige | Decisão documentada no Charter |
+| Modelo de linguagem (Qwen3-4B-Instruct-2507, GGUF) | **Implementado** (artefato, não é fonte de dados) | Novo no TP4; baixado em `Models/` (não versionado) |
 
 > **Sobre as amostras:** `infodengue_sample.csv` é **sintética** (gerada para o app funcionar sem internet; só é usada quando a API pública está inacessível — o app informa isso). `nsc_noticias_*` e `sinan_sample.csv` são amostras pequenas de demonstração; rode o scraper localmente para substituí-las por dados reais.
 
@@ -55,8 +56,9 @@ Clima (temperatura/precipitação), índices de satélite (NDVI, impermeabiliza�
 | `Data/Raw/nsc_noticias_texto.txt` | Scraping | `scrape_nsc_dengue.py` | Nuvem de palavras, corpus |
 | `Data/Raw/sinan_sample.csv` | Amostra ilustrativa | manual | Referência de schema |
 | `Data/Processed/infodengue_uploads.csv` | Usuário (upload ou POST) | app / API | Linhas adicionadas à base (não versionado) |
-| `Data/Processed/noticias_corpus.jsonl` | Derivado | `prepare_corpus.py` | Entrada de LLM |
-| `Data/Processed/contexto_infodengue.json` | Derivado | `prepare_corpus.py` | Contexto numérico para LLM |
+| `Data/Processed/noticias_corpus.jsonl` | Derivado (texto **limpo**) | `python Code/cli.py gerar-corpus` ou automaticamente pela API | Entrada de LLM |
+| `Data/Processed/contexto_infodengue.json` | Derivado | idem | Contexto numérico para LLM |
+| `Models/*.gguf` | Hugging Face (`unsloth/Qwen3-4B-Instruct-2507-GGUF`, 2,5 GB) | `python Code/cli.py baixar-modelo` | Modelo de IA local (não versionado) |
 
 ## 4. Schemas
 
@@ -70,7 +72,11 @@ Clima (temperatura/precipitação), índices de satélite (NDVI, impermeabiliza�
 | `casos` | inteiro (opcional) | Casos notificados |
 | demais colunas | livres | Aceitas e preservadas (ex.: `Rt`, `casos_est`) |
 
-**Corpus (`noticias_corpus.jsonl`, uma linha por trecho):** `id_noticia`, `chunk_id`, `titulo`, `data_publicacao`, `url`, `texto` (até 800 caracteres).
+**Corpus (`noticias_corpus.jsonl`, uma linha por trecho):** `id_noticia`, `chunk_id`, `titulo`, `texto` (até 800 caracteres) e, repetidos em todos os trechos da notícia, `data_publicacao`, `autor`, `url`, `resumo`. A "notícia inteira" é a junção dos trechos por `chunk_id`.
+
+**Limpeza aplicada ao texto raspado (TP4):** o HTML do NSC Total traz, junto do corpo, rodapé de copyright, aviso de cookies, convite a colunistas, legendas de foto, o título repetido e **manchetes de outras matérias** (ex.: "Cidade litorânea de SC leiloa terrenos…"). Esse ruído levaria a IA a resumir assuntos alheios. Regras (`core/domain/texto.py`): remover linhas com padrões de rodapé/menu/legenda, remover o título duplicado e descartar linhas curtas (< 140 caracteres) que não terminam em pontuação. Efeito nos 6 artigos coletados: nenhum dos ruídos de teste permanece no corpus (32 trechos).
+
+**Observação de qualidade:** o corpus é **reconstruído** quando não existe ou não cobre a notícia pedida (ex.: após uma nova coleta), evitando respostas com dados desatualizados. O `contexto_infodengue.json` marca `origem_dados`; quando é `amostra_local` (dados **sintéticos**), a resposta da IA que usa números traz o aviso correspondente.
 
 **Contexto (`contexto_infodengue.json`):** município, origem dos dados, nº de semanas, semanas por nível, total de casos e semana de pico.
 

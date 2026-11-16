@@ -1,60 +1,57 @@
 # Documentação da API (FastAPI)
 
-**Iniciar** (na raiz do projeto, com o ambiente ativo):
+**Iniciar** (raiz do projeto, ambiente ativo): `python Code/run_api.py` · Swagger: http://127.0.0.1:8000/docs · OpenAPI: `/openapi.json`
+Sem autenticação (uso local). Dados da série: API pública do InfoDengue (ou amostra local) + linhas enviadas por `POST`.
 
-```bash
-python -m uvicorn main:app --app-dir Code/api --port 8000
+## Formato de erro (todas as rotas)
+
+```json
+{"codigo": "modelo_indisponivel", "categoria": "ia", "mensagem": "Houve um problema com a IA (modelo …): …",
+ "sugestao": "Rode uma vez, com internet: python Code/cli.py baixar-modelo …", "detalhe": "…"}
 ```
-
-Swagger interativo: http://127.0.0.1:8000/docs · Esquema OpenAPI: `/openapi.json`
-
-A API não tem autenticação (uso local). Os dados vêm da API pública do InfoDengue (ou da amostra local) somados às linhas enviadas por `POST`, que ficam salvas em `Data/Processed/infodengue_uploads.csv`.
+`categoria`: `entrada` · `dados` · `ia` · `sistema`. Erros inesperados devolvem 500 com um código de protocolo (também no log), sem detalhes internos.
 
 ## Rotas
 
-### `GET /health`
-Verifica se a API está no ar e de onde vêm os dados (`api` pública do InfoDengue ou `amostra_local`).
-```bash
-curl http://127.0.0.1:8000/health
-# {"status":"ok","origem_dados_infodengue":"api"}
-```
-
-### `GET /infodengue`
-Consulta a série semanal (base + dados enviados).
-
-| Parâmetro | Tipo | Descrição |
+| Método | Rota | Função |
 |---|---|---|
-| `se_inicio` | int (opcional) | SE inicial, inclusiva (AAAASS) |
-| `se_fim` | int (opcional) | SE final, inclusiva |
-| `nivel` | int, repetível (opcional) | Níveis 1–4. Ex.: `?nivel=3&nivel=4` |
+| GET | `/health` | API no ar + estado do modelo de IA (pronto? carregado?) |
+| GET | `/operacoes` | Operações de IA e se exigem pergunta |
+| GET | `/infodengue` | Série semanal. Filtros: `se_inicio`, `se_fim`, `nivel` (repetível) |
+| POST | `/infodengue` | Envia linhas (`id`, `SE`, `nivel` 1–4, `casos` opcional, extras aceitos). `id` repetido: mantém o original |
+| DELETE | `/infodengue/uploads` | Descarta as linhas enviadas (204) |
+| GET | `/noticias` | Lista notícias. Filtros: `busca`, `limit` (1–200) |
+| GET | `/noticias/{id}` | Uma notícia (404 se não existir) |
+| GET | `/noticias/texto` | Texto limpo de todas as notícias (nuvem de palavras) |
+| POST | `/noticias/{id}/processar` | **Processa a notícia com a IA local** |
+
+## `POST /noticias/{noticia_id}/processar`
+
+Busca a notícia inteira no corpus, monta o prompt da operação e devolve a resposta do modelo.
+
+**Corpo:** `{"operacao": "resumo" | "sentimento" | "qa" | "relatorio", "pergunta": "texto (obrigatória só em qa, até 500 caracteres)"}`
 
 ```bash
-curl "http://127.0.0.1:8000/infodengue?se_inicio=202610&se_fim=202620&nivel=3&nivel=4"
-# {"origem":"api","total":3,"dados":[{"id":...,"SE":202618,"nivel":3,...}]}
+curl -X POST http://127.0.0.1:8000/noticias/3/processar -H "Content-Type: application/json" -d '{"operacao":"resumo"}'
+curl -X POST http://127.0.0.1:8000/noticias/3/processar -H "Content-Type: application/json" -d '{"operacao":"qa","pergunta":"Quantas mortes houve em 2024?"}'
 ```
 
-### `POST /infodengue`
-Envia novas linhas. Corpo: lista de objetos com `id`, `SE`, `nivel` (1–4) e, opcionalmente, `casos` e campos extras. Se o `id` já existir, a linha **original** é mantida.
-```bash
-curl -X POST http://127.0.0.1:8000/infodengue \
-  -H "Content-Type: application/json" \
-  -d '[{"id":"u1","SE":202650,"nivel":3,"casos":10}]'
-# {"adicionadas":1,"ignoradas_por_id_repetido":0,"total":53}
-```
-Erros: `422` se `nivel` estiver fora de 1–4, faltar campo obrigatório ou a lista for vazia.
+**Resposta 200** (ordem dos campos = ordem de exibição):
 
-### `GET /noticias`
-Lista as notícias coletadas por scraping.
+| Campo | Conteúdo |
+|---|---|
+| `noticia_id`, `titulo` | A notícia processada |
+| `operacao`, `nome_operacao` | Ex.: `resumo`, "Resumo automático de notícia" |
+| `resultado` | Texto gerado pelo modelo |
+| `resumo_final` | Sentimento: `Sentimento: POSITIVO/NEGATIVO/NEUTRO`; demais: primeira frase do resultado |
+| `avisos` | Ex.: texto truncado; números do InfoDengue são dados de exemplo (sintéticos) |
+| `aviso_padrao` | "Este conteúdo foi gerado por um modelo de IA e pode conter erros…" |
+| `modelo`, `tempo_segundos` | Modelo usado e duração |
+| `markdown` | Resposta completa formatada: título → operação → resultado → resumo final → avisos → aviso padrão |
 
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `busca` | texto (opcional) | Filtra por trecho no título |
-| `limit` | int, 1–200 (padrão 20) | Máximo de notícias |
+**Erros:** `404` notícia inexistente · `422` operação/corpo inválido ou pergunta ausente · `429` IA ocupada · `502` falha do modelo/resposta vazia · `503` modelo indisponível (não baixado, biblioteca ausente, sem memória) ou corpus não preparado · `504` tempo limite da IA.
 
-```bash
-curl "http://127.0.0.1:8000/noticias?busca=joinville&limit=5"
-# {"total":3,"noticias":[{"id":1,"titulo":"...","data_publicacao":"...","autor":"...","url":"...","resumo":"..."}]}
-```
+> Em computador sem placa de vídeo compatível, uma resposta pode levar **de 1 a 3 minutos** (estimativa). Chamadas simultâneas esperam a vez; se a espera passar do limite, retornam 429.
 
 ## Como o app usa a API
-`Code/utils/data_service.py` chama estas rotas; se a API não responder, usa a mesma lógica localmente (`data_ops.py`). A página **Explorar a API** permite testar os `GET` pela interface.
+`ui_streamlit/gateways.py`: `ApiGateway` (HTTP) com alternativa local (`LocalGateway`) para dados e notícias quando a API está fora do ar. **O processamento por IA exige a API** (o modelo não é carregado dentro do processo da interface).
