@@ -35,6 +35,7 @@ class RespostaProcessamentoSchema(BaseModel):
     aviso_padrao: str
     modelo: str
     tempo_segundos: float
+    metricas: Optional[dict[str, Any]] = Field(None, description="Tempos e tokens medidos pelo adaptador do modelo (quando disponíveis).")
     markdown: str = Field(..., description="Resposta completa já formatada, pronta para exibir.")
 
 
@@ -102,3 +103,80 @@ class EstadoModeloSchema(BaseModel):
 class HealthSchema(BaseModel):
     status: str
     modelo_ia: EstadoModeloSchema
+
+
+# ----------------------------------------------------------- conversa com os dados
+class PerguntaChatRequest(BaseModel):
+    sessao_id: Optional[str] = Field(None, max_length=64, description="Omitir para iniciar uma nova conversa.")
+    pergunta: str = Field(..., min_length=1, max_length=300, description="Pergunta sobre casos de dengue em Joinville.")
+
+
+class PlanoSchema(BaseModel):
+    intencao: str
+    ano_inicio: int
+    ano_fim: int
+    origem: str = Field(..., description="'ia' (plano do modelo) ou 'regras' (alternativa determinística).")
+
+
+class RequisicaoInfoDengueSchema(BaseModel):
+    url: str
+    geocode: int
+    doenca: str
+    ano_inicio: int
+    ano_fim: int
+
+
+class EtapaSchema(BaseModel):
+    nome: str
+    tempo_segundos: float
+    tokens_gerados: Optional[int] = None
+
+
+class RespostaChatSchema(BaseModel):
+    sessao_id: str
+    pergunta: str
+    tipo: str = Field(..., description="'resposta' ou 'recusa' (pergunta fora do escopo: só dengue em Joinville).")
+    resposta: str
+    plano: Optional[PlanoSchema] = None
+    requisicao: Optional[RequisicaoInfoDengueSchema] = Field(None, description="Requisição feita ao InfoDengue para responder.")
+    fatos: Optional[str] = Field(None, description="Fatos calculados (em código) que embasam a resposta.")
+    etapas: list[EtapaSchema] = []
+    avisos: list[str] = []
+    aviso_padrao: str
+    modelo: str
+    tempo_segundos: float
+
+
+class TurnoSchema(BaseModel):
+    pergunta: str
+    resposta: str
+    tipo: str
+
+
+class ConversaSchema(BaseModel):
+    sessao_id: str
+    turnos: list[TurnoSchema]
+
+
+class HistoricoInfoDengueSchema(BaseModel):
+    requisicao: RequisicaoInfoDengueSchema
+    fatos: dict[str, Any]
+    serie: list[dict[str, Any]]
+
+
+class SentimentoSchema(BaseModel):
+    noticia_id: int
+    titulo: str
+    classe: str
+    rotulo: str
+    justificativa: str
+    modelo: str
+    tempo_segundos: float
+    analisado_em: str
+    data_publicacao: Optional[str] = None
+
+
+class SentimentosSchema(BaseModel):
+    total: int
+    por_classe: dict[str, int]
+    itens: list[SentimentoSchema]

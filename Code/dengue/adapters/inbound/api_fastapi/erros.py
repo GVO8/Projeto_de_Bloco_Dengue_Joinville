@@ -18,6 +18,7 @@ _TRADUCAO = {
     "missing": "campo obrigatório ausente",
     "enum": "valor não permitido",
     "string_too_long": "texto longo demais",
+    "string_too_short": "texto curto demais (escreva algo)",
     "less_than_equal": "valor acima do máximo permitido",
     "greater_than_equal": "valor abaixo do mínimo permitido",
     "int_parsing": "deveria ser um número inteiro",
