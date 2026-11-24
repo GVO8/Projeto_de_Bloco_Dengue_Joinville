@@ -123,7 +123,7 @@ def test_inferencias_simultaneas_sao_serializadas(modelo_arquivo):
 def test_fake_registra_chamadas_e_aceita_resposta_fixa_ou_funcao():
     assert ModeloFake("fixa").gerar("p", max_tokens=3) == "fixa"
     f = ModeloFake(lambda p: p.upper())
-    assert f.gerar("abc", max_tokens=7) == "ABC" and f.chamadas == [{"prompt": "abc", "max_tokens": 7}]
+    assert f.gerar("abc", max_tokens=7) == "ABC" and f.chamadas == [{"prompt": "abc", "max_tokens": 7, "formato_json": False}]
 
 
 def test_fake_padrao_marca_resposta_como_simulada():

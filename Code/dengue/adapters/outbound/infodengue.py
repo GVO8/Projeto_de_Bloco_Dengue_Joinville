@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import io
 import logging
+import time
 from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dengue.core.ports.repositorios import FonteInfoDengue, RepositorioUploads
+from dengue.core.domain.chat import GEOCODE_JOINVILLE, RequisicaoInfoDengue
+from dengue.core.domain.erros import ConsultaSemDadosError, InfoDengueIndisponivelError
+from dengue.core.ports.repositorios import ConsultaInfoDengue, FonteInfoDengue, RepositorioUploads
 
 log = logging.getLogger(__name__)
 API_URL = "https://info.dengue.mat.br/api/alertcity"
@@ -72,3 +75,45 @@ class UploadsCsv(RepositorioUploads):
     def limpar(self) -> None:
         if self._caminho.exists():
             self._caminho.unlink()
+
+
+class ConsultaInfoDengueHttp(ConsultaInfoDengue):
+    """Consulta multi-ano ao InfoDengue (Joinville, dengue). Sem alternativa sintética: sem API, sem resposta."""
+
+    def __init__(self, geocode: int = GEOCODE_JOINVILLE, doenca: str = "dengue", timeout_s: float = 30, http=requests):
+        self._geocode, self._doenca, self._timeout, self._http = geocode, doenca, timeout_s, http
+
+    def consultar(self, ano_inicio: int, ano_fim: int):
+        url = montar_url(geocode=self._geocode, disease=self._doenca, ew_start=1, ew_end=53, ey_start=ano_inicio, ey_end=ano_fim)
+        try:
+            resp = self._http.get(url, timeout=self._timeout)
+            resp.raise_for_status()
+            df = pd.read_csv(io.StringIO(resp.text))
+        except (requests.RequestException, pd.errors.ParserError, pd.errors.EmptyDataError) as exc:
+            raise InfoDengueIndisponivelError(str(exc)) from exc
+        if df.empty or "SE" not in df.columns:
+            raise ConsultaSemDadosError(ano_inicio, ano_fim)
+        if "id" not in df.columns:
+            df["id"] = df["SE"].astype(str)
+        df = df[(df["SE"] // 100 >= ano_inicio) & (df["SE"] // 100 <= ano_fim)]
+        if df.empty:
+            raise ConsultaSemDadosError(ano_inicio, ano_fim)
+        return df.reset_index(drop=True), RequisicaoInfoDengue(url, self._geocode, self._doenca, ano_inicio, ano_fim)
+
+
+class ConsultaInfoDengueComCache(ConsultaInfoDengue):
+    """Evita repetir a mesma consulta em curto intervalo (o InfoDengue é um serviço público e compartilhado)."""
+
+    def __init__(self, interna: ConsultaInfoDengue, ttl_s: float = 900, relogio=time.monotonic):
+        self._interna, self._ttl, self._relogio = interna, ttl_s, relogio
+        self._cache: dict[tuple[int, int], tuple[float, tuple]] = {}
+
+    def consultar(self, ano_inicio: int, ano_fim: int):
+        chave, agora = (ano_inicio, ano_fim), self._relogio()
+        guardado = self._cache.get(chave)
+        if guardado and agora - guardado[0] < self._ttl:
+            df, req = guardado[1]
+            return df.copy(), req
+        resultado = self._interna.consultar(ano_inicio, ano_fim)
+        self._cache[chave] = (agora, resultado)
+        return resultado[0].copy(), resultado[1]

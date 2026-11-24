@@ -31,9 +31,11 @@ def _importar_llama():
 
 
 class ModeloLlamaCpp(ModeloLinguagem):
-    def __init__(self, config: ConfigLlm, fabrica_llama=_importar_llama, relogio=time.monotonic):
-        self._cfg, self._fabrica, self._relogio = config, fabrica_llama, relogio
+    def __init__(self, config: ConfigLlm, fabrica_llama=_importar_llama, relogio=time.monotonic, medidor=time.perf_counter):
+        self._cfg, self._fabrica, self._relogio, self._medir = config, fabrica_llama, relogio, medidor
         self._llm = None
+        self._metricas: dict | None = None
+        self._tempo_carga = 0.0
         self._lock = threading.Lock()
 
     @property
@@ -44,6 +46,9 @@ class ModeloLlamaCpp(ModeloLinguagem):
         existe = self._cfg.caminho_modelo.exists()
         detalhe = "" if existe else f"arquivo não encontrado: {self._cfg.caminho_modelo}"
         return EstadoModelo("llamacpp", self.nome, pronto=existe, carregado=self._llm is not None, detalhe=detalhe)
+
+    def ultimas_metricas(self) -> dict | None:
+        return self._metricas
 
     # ------------------------------------------------------------------
     def _carregar(self):
@@ -56,21 +61,24 @@ class ModeloLlamaCpp(ModeloLinguagem):
             Llama = self._fabrica()
         except ImportError as exc:
             raise ModeloIndisponivelError("biblioteca", modelo=self.nome, detalhe=str(exc)) from exc
+        inicio = self._medir()
         try:
             self._llm = Llama(
                 model_path=str(caminho), n_ctx=self._cfg.n_ctx, n_threads=self._cfg.n_threads,
                 n_gpu_layers=self._cfg.n_gpu_layers, verbose=False,
             )
+            self._tempo_carga = self._medir() - inicio
         except Exception as exc:
             log.exception("Falha ao carregar o modelo")
             raise ModeloIndisponivelError("carga", modelo=self.nome, detalhe=str(exc)) from exc
 
-    def gerar(self, prompt: str, *, max_tokens: int) -> str:
+    def gerar(self, prompt: str, *, max_tokens: int, formato_json: bool = False) -> str:
         if not self._lock.acquire(timeout=self._cfg.timeout_s):
             raise ModeloOcupadoError(modelo=self.nome)
         try:
+            self._tempo_carga = 0.0
             self._carregar()
-            return self._gerar_com_prazo(prompt, max_tokens)
+            return self._gerar_com_prazo(prompt, max_tokens, formato_json)
         except ErroDeIA:
             raise
         except Exception as exc:
@@ -79,16 +87,22 @@ class ModeloLlamaCpp(ModeloLinguagem):
         finally:
             self._lock.release()
 
-    def _gerar_com_prazo(self, prompt: str, max_tokens: int) -> str:
+    def _gerar_com_prazo(self, prompt: str, max_tokens: int, formato_json: bool = False) -> str:
         limite = self._relogio() + self._cfg.timeout_s
+        extras = {"response_format": {"type": "json_object"}} if formato_json else {}
+        inicio = self._medir()
         fluxo = self._llm.create_chat_completion(
             messages=[{"role": "user", "content": prompt}], max_tokens=max_tokens,
-            temperature=self._cfg.temperatura, top_p=self._cfg.top_p, stream=True,
+            temperature=self._cfg.temperatura, top_p=self._cfg.top_p, stream=True, **extras,
         )
         pedacos: list[str] = []
+        primeiro: float | None = None
         try:
             for chunk in fluxo:
-                pedacos.append(chunk["choices"][0].get("delta", {}).get("content") or "")
+                pedaco = chunk["choices"][0].get("delta", {}).get("content") or ""
+                if pedaco and primeiro is None:
+                    primeiro = self._medir() - inicio
+                pedacos.append(pedaco)
                 if self._relogio() > limite:
                     raise ModeloTimeoutError(self._cfg.timeout_s, modelo=self.nome)
         finally:
@@ -98,4 +112,12 @@ class ModeloLlamaCpp(ModeloLinguagem):
         texto = "".join(pedacos).strip()
         if not texto:
             raise RespostaVaziaError(modelo=self.nome)
+        total = self._medir() - inicio
+        tokens = sum(1 for p in pedacos if p)                     # cada trecho do streaming ≈ 1 token
+        geracao = max(total - (primeiro or 0.0), 1e-9)
+        self._metricas = {
+            "tempo_carga_s": round(self._tempo_carga, 2), "tempo_primeiro_token_s": round(primeiro or 0.0, 2),
+            "tokens_gerados": tokens, "tempo_geracao_s": round(geracao, 2),
+            "tokens_por_s": round(max(tokens - 1, 0) / geracao, 2), "tempo_total_s": round(total + self._tempo_carga, 2),
+        }
         return texto

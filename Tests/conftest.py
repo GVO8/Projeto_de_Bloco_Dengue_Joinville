@@ -23,7 +23,7 @@ def container(raiz):
     from dengue.adapters.outbound.llm_fake import ModeloFake
     from dengue.config import Configuracoes
     from dengue.container import Container
-    from fakes import ColetorFalso
+    from fakes import ColetorFalso, ConsultaFalsa
 
-    return Container(Configuracoes(raiz=raiz), modelo=ModeloFake(), coletor=ColetorFalso(),
-                     fonte_infodengue=InfoDengueAmostraCsv(raiz / "Data" / "Raw" / "infodengue_sample.csv"))
+    return Container(Configuracoes(raiz=raiz), modelo=ModeloFake(), coletor=ColetorFalso(), consulta_infodengue=ConsultaFalsa(),
+                     ano_atual=lambda: 2026, fonte_infodengue=InfoDengueAmostraCsv(raiz / "Data" / "Raw" / "infodengue_sample.csv"))
