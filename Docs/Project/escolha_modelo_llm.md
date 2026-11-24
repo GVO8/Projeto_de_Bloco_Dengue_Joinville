@@ -20,7 +20,7 @@
 - **Português:** a família Qwen3 é multilíngue e inclui o português entre os idiomas suportados.
 - **Versão `2507` "Instruct":** é a variante *sem modo de raciocínio* (não emite blocos `<think>`), o que é desejável aqui: a resposta é direta, mais curta e **mais rápida** em hardware limitado.
 - **Contexto:** suporta janelas de até 262 mil tokens; usamos **4.096** (notícias coletadas têm de ≈ 2,4 mil a 4,6 mil caracteres, ou seja ≈ 600–1.500 tokens), o que é bem confortável.
-- **Nota honesta:** não executamos benchmarks próprios. A escolha se apoia nas características do modelo e na adequação ao hardware; a qualidade real deve ser **avaliada na próxima etapa** com uma amostra de notícias conferida manualmente (ver `llm_readiness.md`).
+- **Nota honesta:** não executamos benchmarks de qualidade. A escolha se apoia nas características do modelo e na adequação ao hardware; a qualidade real deve ser **avaliada na próxima etapa** com uma amostra de notícias conferida manualmente (ver `llm_readiness.md`).
 
 ### 2.2 Custo computacional local
 Os números abaixo são **estimativas de engenharia** (não medições na máquina do projeto).
@@ -51,6 +51,10 @@ Os números abaixo são **estimativas de engenharia** (não medições na máqui
 | BERT/BERTimbau | Não geram texto (só classificam/extraem) |
 | T5/PTT5 | Exigiriam ajuste fino por tarefa, fora do escopo |
 
+## 3.1 Uso do modelo no projeto
+
+O mesmo modelo atende a duas funções: **(a)** operações sobre notícias (resumo, sentimento de preocupação, perguntas, relatório) e **(b)** a **conversa com os dados do InfoDengue**, que usa duas chamadas por pergunta: planejamento (saída em **modo JSON**, 120 tokens no máximo) e redação (250 tokens). Por isso a resposta de uma pergunta leva o dobro de uma operação simples.
+
 ## 4. Parâmetros adotados e por quê
 
 | Parâmetro | Valor | Motivo |
@@ -63,3 +67,22 @@ Os números abaixo são **estimativas de engenharia** (não medições na máqui
 | Limite de tempo | 600 s | CPU antiga; a geração é interrompida de forma limpa (streaming) |
 
 Todos podem ser alterados por variáveis `DENGUE_LLM_*` (ver README).
+
+## 5. Evidência de execução real (PENDENTE — a ser preenchida na máquina do projeto)
+
+As tabelas acima trazem **estimativas**, não medições. Como a avaliação do TP4 apontou, falta mostrar uma resposta real do modelo (os testes usam FakeLLM). Para substituir as estimativas:
+
+```powershell
+python Code/cli.py baixar-modelo                 # uma vez
+python Code/cli.py medir-modelo --hardware "i7-7500U, 24 GB RAM, GPU 4 GB" --pergunta "Qual foi o ano com mais casos de dengue?"
+```
+O comando roda o **modelo real** duas vezes (a 1ª inclui carregar o modelo na memória, a 2ª não) e, com `--pergunta`, mede também a conversa com os dados (planejamento, InfoDengue e resposta). Salva `Docs/Evidencias/medicao_AAAAMMDD_HHMMSS.md` com ambiente, tokens, tokens/s, tempo até o 1º token, tempo total e o texto das respostas. Recusa-se a rodar com o modelo simulado, para não gerar falsa evidência.
+
+| Medida | Estimativa | Medido na máquina do projeto |
+|---|---|---|
+| Carregar o modelo | — | _preencher_ |
+| Tokens por segundo (CPU) | 2 a 5 | _preencher_ |
+| Resposta a uma notícia (resumo) | 1 a 3 min | _preencher_ |
+| Conversa com os dados (2 chamadas) | 2 a 6 min | _preencher_ |
+
+Depois de medir, **substitua as estimativas desta página e do Charter pelos valores medidos** e anexe o arquivo de evidência e um print da tela ao relatório do TP. Veja `Docs/Evidencias/README.md`.

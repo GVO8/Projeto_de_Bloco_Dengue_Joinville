@@ -1,119 +1,111 @@
-# Project Charter — Dengue em Múltiplas Dimensões (Joinville/SC)
+# Project Charter — Dengue em Joinville: dados, mídia e IA em linguagem natural
 
-**Versão TP4 · Projeto de IA Generativa e ESG · Ciência de Dados**
-Histórico: TP1 (proposta) → TP2 (interface dinâmica, scraping, upload/download) → TP3 (multipáginas, FastAPI, preparação para LLM) → **TP4 (LLM local integrado à API, arquitetura hexagonal, testes)**.
+**Versão final — TP5 · Projeto de Bloco · Ciência de Dados Aplicada**
+Histórico: TP1 (proposta) → TP2 (interface, scraping, upload/download) → TP3 (multipáginas, FastAPI) → TP4 (IA local na API, arquitetura hexagonal) → **TP5 (conversa com os dados, dashboard final)**.
 
 ---
 
-## 1. Contexto e Justificativa
+## 1. Contexto e justificativa
 
-Joinville (SC) está numa região historicamente pouco afetada por dengue, mas o aumento das temperaturas e a expansão do *Aedes aegypti* para o Sul do Brasil a tornam vulnerável a surtos. Sistemas de alerta baseados em notificação (como o InfoDengue) já são referência; este projeto **não os replica**: usa-os como uma das dimensões de um painel mais amplo, que também reúne conteúdo textual de notícias públicas e, em etapas futuras, clima, satélite e população.
+A dengue é um problema de saúde pública crescente no Sul do Brasil: o aumento das temperaturas permite que o *Aedes aegypti* circule em regiões antes pouco afetadas, como Joinville (SC). Os dados para acompanhá-la existem e são públicos — o **InfoDengue** publica, por API, a série semanal de casos e o nível de alerta de cada município —, mas têm dois obstáculos:
 
-## 2. Problema de Negócio (reavaliado no TP4)
+1. **Acesso técnico.** Obter, limpar e comparar anos exige conhecimento de APIs, semanas epidemiológicas e programação. Um morador, um jornalista ou um gestor sem formação técnica dificilmente responde sozinho a *"foi o ano com mais casos?"* ou *"os casos subiram em relação ao ano passado?"*.
+2. **Ausência da dimensão humana.** Os números não dizem **o que a população está sendo levada a sentir**. A mídia local é o canal pelo qual a maioria das pessoas toma conhecimento da situação, e o tom das notícias é um sinal indireto da preocupação veiculada.
 
-**Como reunir, num único painel interativo e acessível por API, indicadores públicos de dengue para Joinville/SC — série epidemiológica semanal, notícias recentes e, futuramente, clima, satélite e densidade populacional — de forma que partes interessadas e outras aplicações consumam esses dados e, na próxima etapa, recebam resumos e respostas geradas por LLM?**
+## 2. Problema de negócio
 
-**O que mudou em relação ao TP2 à luz das novas ferramentas:**
-- A **FastAPI** transforma o projeto de "um app" em "uma plataforma de dados": o mesmo conjunto de dados passa a ser consumível por outros sistemas (rotas GET/POST), não apenas pela interface.
-- O **objetivo de preparar os dados para LLM** passa a ser explícito: o painel deixa de ser apenas visualização e passa a produzir um corpus e contexto numérico prontos para resumo, classificação, Q&A e geração de relatório.
-- Metas e KPIs foram atualizados (seção 4). O escopo de dimensões (SINAN, Copernicus, GEE, IBGE) **não mudou**: continuam documentadas como fontes futuras.
+**Como tornar os dados públicos de dengue de Joinville acessíveis a qualquer pessoa, em linguagem natural, e relacioná-los à preocupação veiculada pela mídia, com uma IA que roda localmente, é auditável e não inventa números?**
 
-**O que mudou no TP4:** os dados e notícias deixam de apenas ser exibidos e passam a ser **interpretados por uma IA local**: para cada notícia o usuário pode pedir resumo, classificação de sentimento, uma resposta a uma pergunta ou um relatório. O modelo roda no computador do projeto (sem nuvem, sem custo por uso e sem enviar texto a terceiros), o que reforça o pilar de **Governança** (controle e transparência sobre o uso de IA). Toda resposta traz o aviso de que o modelo pode errar.
+### Justificativa da solução (o que o projeto traz de novo)
+- **Democratizar o acesso à informação (ODS 16.10).** O usuário pergunta em português e recebe uma resposta baseada nos dados. Não precisa conhecer a API, a semana epidemiológica ou o pandas.
+- **A mídia como fonte de análise da preocupação.** Notícias reais são coletadas por *web scraping* e classificadas por IA quanto ao tom (tranquilizador, neutro, preocupante). O painel as coloca ao lado da curva de casos.
+- **Confiança por construção.** Os números **não** vêm da IA: são calculados em código a partir da resposta do InfoDengue. A IA apenas interpreta a pergunta e redige a resposta. Toda resposta mostra a requisição feita e os fatos usados, e traz o aviso de que o modelo pode errar.
 
-## 3. Pilar ESG e ODS
+## 3. Fontes de dados (únicas, públicas e gratuitas)
 
-| Pilar ESG | Conexão |
-|---|---|
-| **Social (S)** | Saúde pública, prevenção de doença negligenciada |
-| **Governança (G)** | Transparência e acessibilidade de dados públicos (agora inclusive por API) |
-
-- **ODS 3** (Saúde e Bem-Estar), meta 3.3 — principal.
-- **ODS 11** (Cidades e Comunidades Sustentáveis) — leitura territorial de indicadores.
-- **ODS 17** (Parcerias e Meios de Implementação) — uso exclusivo de dados abertos e interface programática para reuso.
-
-## 4. Metas e Indicadores (KPIs) — atualizados no TP4
-
-| Meta | Indicador | Status ao fim do TP3 |
+| Fonte | O que fornece | Observação |
 |---|---|---|
-| Consolidar fontes públicas num só painel | Dimensões integradas tecnicamente | InfoDengue (API) + notícias (scraping); SINAN em amostra; demais documentadas |
-| Interface multipágina | Nº de páginas navegáveis | 6 páginas com menu de navegação |
-| Acesso programático aos dados | Nº de endpoints documentados | 4 (`GET /health`, `GET /infodengue`, `POST /infodengue`, `GET /noticias`) |
-| Robustez | App funciona sem a API no ar | Sim (leitura local como alternativa) |
-| IA local integrada | Operações de IA na API e na interface | 4 operações (resumo, sentimento, perguntas, relatório), 1 rota `POST /noticias/{id}/processar`, 1 botão por operação |
-| Respostas estruturadas | Padrão de resposta | Título, operação, resultado, resumo final e aviso de erro do modelo em toda resposta |
-| Robustez | Erros tratados com orientação ao usuário | 8 tipos de erro de IA/dados/entrada com mensagem e sugestão; erros de IA identificados como tal |
-| Qualidade de engenharia | Testes automatizados e arquitetura | 150 testes (com FakeLLM) e regra de dependência verificada por teste |
-| Qualidade do texto de entrada | Limpeza do texto raspado | Rodapé, cookies, convites e manchetes soltas removidos antes de chegar à IA |
-| Transparência das fontes | Fontes documentadas | Todas, no Data Summary Report |
-| Uso exclusivo de dados abertos | Fontes pagas/restritas | 0 |
+| **InfoDengue** (API) | Série semanal de dengue em Joinville: casos notificados, nível de alerta e outros indicadores | O InfoDengue já consolida notificações do SINAN, dados climáticos e estimativas populacionais do IBGE; por isso esses dados não são tratados como fontes separadas |
+| **NSC Total** (web scraping) | Notícias sobre dengue em Joinville | Texto limpo, classificado por IA |
 
-## 5. Público-Alvo (fictício)
+Qualquer outra fonte (satélite, clima, população) está **fora do escopo**; o projeto herda esses dados apenas indiretamente, por meio do InfoDengue.
 
-Perfis hipotéticos, sem contato real com instituições, apenas para orientar o design:
-- **Primário:** gestores de vigilância em saúde de um município como Joinville.
-- **Secundário:** moradores interessados em entender a situação local.
-- **Terciário:** estudantes, pesquisadores e **outras aplicações** que consumam a API.
+## 4. Pilares ESG e ODS
 
-> **Nota de escopo:** o projeto não envolve contato, parceria ou validação com a Prefeitura de Joinville ou qualquer órgão público.
+| Pilar | Como o projeto se conecta |
+|---|---|
+| **Social (S)** | Saúde pública e acesso à informação: qualquer cidadão consegue consultar a situação da dengue sem conhecimento técnico |
+| **Governança (G)** | Transparência e uso responsável de IA: modelo **local** (nenhum texto sai da máquina), escopo restrito (só dengue em Joinville), números auditáveis, aviso de limitações e erros tratados com orientação |
 
-## 6. Escopo do TP4
+O pilar Ambiental aparece só de forma indireta (o InfoDengue incorpora clima em seus modelos); o projeto não trata indicadores ambientais.
 
-**Entregue:**
-- **Escolha e justificativa do modelo** (`Docs/Project/escolha_modelo_llm.md`): Qwen3-4B-Instruct-2507 (GGUF, Q4_K_M), executado localmente com llama.cpp.
-- **Rota `POST /noticias/{id}/processar`** (FastAPI): recebe o id da notícia e a operação, busca a notícia inteira no corpus (via `PrepararCorpus`), monta o prompt com `prompts.py`, consulta o modelo e devolve uma resposta estruturada (response model Pydantic).
-- **Botões por operação em cada notícia** na interface (Resumir, Sentimento, Perguntar, Relatório).
-- **Padrão de resposta:** título, nome da operação, resultado, resumo final (classe no caso do sentimento) e, ao final, o aviso padrão sobre erros do modelo.
-- **Tratamento de erros** com mensagens amigáveis e orientação ao usuário, em todas as rotas e páginas; erros do modelo identificados como "problema com a IA e o modelo utilizado".
-- **Limpeza do texto raspado** e corpus reconstruído automaticamente quando desatualizado.
-- **Arquitetura hexagonal** (`Docs/Project/arquitetura.md`) com injeção de dependências, **FakeLLM** e **150 testes** automatizados.
+- **ODS 3 — Saúde e Bem-Estar** (meta 3.3, doenças tropicais negligenciadas): principal.
+- **ODS 16 — Paz, Justiça e Instituições Eficazes** (meta 16.10, acesso público à informação): a conversa em linguagem natural democratiza dados públicos.
+- **ODS 17 — Parcerias e Meios de Implementação**: uso exclusivo de dados abertos.
 
-**Fora do escopo:** contato com órgãos públicos; modelo preditivo; avaliação quantitativa da qualidade das respostas da IA (próxima etapa); integração de Copernicus, Google Earth Engine e IBGE; deploy público; autenticação da API.
+## 5. Metas e indicadores (KPIs)
 
-## 7. Decisão técnica: Selenium não será utilizado
-
-O enunciado prevê Selenium "se necessário". Avaliação por fonte:
-
-| Fonte | Natureza | Ferramenta |
+| Meta | Indicador | Resultado |
 |---|---|---|
-| InfoDengue | API REST (CSV) | `pandas`/`requests` |
-| NSC Total (`/tag/dengue`) | HTML estático renderizado no servidor, com listagem paginada por URL | `requests` + BeautifulSoup |
+| Responder perguntas em linguagem natural com base nos dados | As 4 perguntas-modelo (pico, ano com mais casos, ano com menos casos, comparação com o ano anterior) respondidas a partir de uma requisição ao InfoDengue | Implementado; coberto por testes com respostas conhecidas |
+| Restringir o escopo | Perguntas de outras cidades, outros territórios, outros assuntos e tentativas de alterar as regras são recusadas | Implementado (3 camadas); recusa sem gastar IA nos casos óbvios |
+| Números confiáveis | Números calculados em código, nunca pela IA; ano em andamento tratado à parte; comparação nas mesmas semanas | Implementado e testado |
+| Memória conversacional | Perguntas de continuação ("e em 2024?") entendidas | Implementado, por sessão, com janela de 3 turnos |
+| Mídia como sinal de preocupação | Sentimento de cada notícia, cruzado com a curva de casos | Implementado; classificação roda em lote (`analisar-sentimentos`) |
+| Dashboard simples e profundo | KPIs, ciclo de dados, 3 gráficos de casos, mídia e conversa | Implementado |
+| Robustez | Erros com mensagem e sugestão; erros de IA identificados | 18 códigos de erro, cada um com HTTP, mensagem e sugestão próprios |
+| Qualidade de engenharia | Testes automatizados e arquitetura verificada | 314 testes (FakeLLM), regra de dependência testada, verificação por mutação |
+| **Evidência real do modelo** | Chamada real, com tempo medido na máquina do projeto | **Pendente de execução do aluno** (ver `Docs/Evidencias/`) |
 
-Nenhuma exige interação com formulários ou carregamento assíncrono. Selenium acrescentaria dependência de navegador e driver, mais lentidão e fragilidade de setup, sem ganho de dados. **A decisão será reavaliada** se uma fonte futura (ex.: um portal que só carregue dados via JavaScript) exigir.
+## 6. Argumentação: dados, IA e engenharia de prompts a serviço do problema
 
-## 8. Metodologia e Ambiente
+1. **Dados.** A série do InfoDengue responde *o quê* (quantos casos, quando) e as notícias respondem *como isso é contado*. Sem a mídia, o painel é só mais um gráfico de casos; sem os dados, a análise de sentimento é opinião solta.
+2. **Por que IA generativa.** O obstáculo é a linguagem: transformar "os casos subiram?" em uma consulta e a resposta em frase. Isso é o que um LLM faz bem. Cálculo e verificação, que ele faz mal, ficam em código.
+3. **Engenharia de prompts (versionada em `core/prompts*.py`).**
+   - *Planejador:* converte a pergunta em JSON (`assunto_valido`, `cidade`, `intencao`, `ano_inicio`, `ano_fim`) com 4 exemplos (*few-shot*) e **modo JSON** do llama.cpp. O plano é validado e reconciliado por regras determinísticas; se o JSON falhar, as regras assumem.
+   - *Redator:* recebe só os fatos calculados e a conversa recente; é instruído a usar **somente** esses dados, citar números, responder em até 4 frases e dizer quando a informação não existe.
+   - *Sentimento:* mede a **preocupação** transmitida (NEGATIVO = preocupante, POSITIVO = tranquilizador), não a "positividade" do texto.
+   - Temperatura 0,2: respostas fiéis, não criativas.
+4. **Por que um modelo local.** Privacidade (nenhum texto vai a terceiros), custo zero por uso e controle total, o que é coerente com a Governança.
+5. **Insight gerado.** Qualquer pessoa obtém, em um clique, afirmações como "2026 está X% acima/abaixo de 2025 nas mesmas semanas", com a requisição e os fatos que a sustentam.
 
-- **CRISP-DM** (ciclo analítico) + **TDSP** (artefatos, diretórios, papéis) — ver `Docs/Project/tdsp_crispdm_mapping.md`.
-- Ambiente: `venv` + `requirements.txt` (versões mínimas) e `requirements-llm.txt` para a IA local (**requer Python 3.12**); Git/GitHub para versionamento.
-- Execução: API (`uvicorn`) e app (`streamlit`) em processos separados; ver README.
+## 7. Público-alvo (fictício)
 
-## 9. Stakeholders (papéis do projeto, não instituições reais)
+Gestores de saúde pública, jornalistas e moradores de Joinville, sem contato real com instituições (nenhum órgão público foi consultado nem valida o projeto).
 
-| Papel | Responsável |
+## 8. Escopo
+
+**Dentro:** dados do InfoDengue (Joinville, dengue); notícias do NSC Total; sentimento por IA; conversa em linguagem natural com memória; dashboard; API FastAPI; CLI; testes; documentação.
+**Fora:** outras cidades e doenças; dados de satélite, clima ou população próprios; previsão de casos; autenticação; implantação pública; validação com órgãos de saúde.
+
+## 9. Decisões técnicas
+
+- **Opção escolhida no TP5:** memória conversacional (Opção 1), usando o Qwen3-4B local para conversar com os dados do InfoDengue.
+- **Modelo:** Qwen3-4B-Instruct-2507 (GGUF Q4_K_M) via llama.cpp (`Docs/Project/escolha_modelo_llm.md`).
+- **Selenium não usado:** as duas fontes são uma API e HTML estático.
+- **Sem dado sintético nas respostas:** se o InfoDengue estiver inacessível, a conversa e o dashboard informam o erro em vez de usar amostra. Uma amostra sintética existe apenas para a página "Alertas de 2026" funcionar offline e é sinalizada como tal.
+- **Arquitetura hexagonal** (`Docs/Project/arquitetura.md`).
+
+## 10. Stakeholders (papéis, não instituições)
+
+Product Owner: disciplina · Equipe: aluno de Ciência de Dados · Orientador: professor da disciplina · Parte interessada: perfil fictício de gestor/cidadão · Fontes: InfoDengue e NSC Total (sem contato direto).
+
+## 11. Riscos e limitações
+
+- **O tom da notícia é indicador indireto** da preocupação veiculada; não mede a opinião da população. O painel declara isso.
+- **Amostra pequena de notícias** (6 coletadas): o gráfico de mídia é ilustrativo, não estatístico. Ampliar a coleta é o caminho.
+- **Casos notificados são revisados** (atraso de notificação); as últimas semanas podem mudar. As respostas avisam.
+- **Modelo pequeno (4B) e hardware modesto:** pode errar na interpretação; a resposta leva de 1 a 3 minutos em CPU (estimativa a confirmar com a medição real). Mitigações: números em código, escopo restrito, aviso padrão, limite de tempo e fila de uma chamada por vez.
+- **Comportamento da API do InfoDengue em consultas de vários anos** foi implementado conforme o exemplo oficial, mas **não foi verificado contra o serviço real** durante o desenvolvimento (sem acesso de rede no ambiente). Deve ser confirmado na primeira execução.
+- **Guarda de escopo não é infalível:** a lista de cidades é finita e um modelo de 4B pode errar a classificação; a última camada (resposta só a partir dos dados de Joinville) limita o dano.
+- **Sem autenticação e sem persistência da conversa** (memória em RAM; perde-se ao reiniciar a API).
+
+## 12. Cronograma
+
+| TP | Entrega |
 |---|---|
-| Product Owner / Solicitante | Disciplina de IA Generativa e ESG |
-| Equipe de execução | Aluno(s) de Ciência de Dados |
-| Orientador acadêmico | Professor(a) da disciplina |
-| Parte interessada (fictícia) | Perfil de gestor de saúde pública |
-| Fontes oficiais (públicas, sem contato direto) | InfoDengue, NSC Total, SINAN/DATASUS, Copernicus, GEE, IBGE |
-
-## 10. Riscos
-
-- O HTML do NSC Total pode mudar e quebrar o scraper (mitigação: seletores baseados em cabeçalhos e meta tags, não em classes CSS).
-- API do InfoDengue indisponível (mitigação: amostra local no mesmo schema; o app informa a origem dos dados).
-- A API e o app compartilham arquivos em disco: adequado para este porte, mas não para múltiplos usuários simultâneos (fora do escopo; em produção seria um banco de dados).
-- A API não tem autenticação: aceitável localmente; necessária antes de qualquer exposição pública.
-- **Modelo local em computador modesto:** sem placa de vídeo compatível, cada resposta leva de 1 a 3 minutos (estimativa). Mitigação: limite de tempo, uma inferência por vez, aviso na interface e opção de usar a GPU.
-- **Python 3.14:** não há versão pronta do `llama-cpp-python`; usar Python 3.12 para a IA.
-- **Respostas incorretas da IA:** aviso padrão em toda resposta; avaliação sistemática na próxima etapa.
-- Dados em LLM: respostas devem ser ancoradas no corpus (templates de Q&A já instruem "somente o contexto") para reduzir alucinação.
-- Granularidade municipal do InfoDengue/SINAN; correlações ambientais sem validação estatística (fora de escopo).
-
-## 11. Cronograma
-
-| Fase | Entrega |
-|---|---|
-| TP1 | Proposta, planejamento e demo básica |
-| TP2 | Interface dinâmica, scraping (BeautifulSoup), API InfoDengue, cache/sessão, upload/download |
-| TP3 | Multipáginas, FastAPI, preparação para LLM, documentação revisada |
-| **TP4 (atual)** | LLM local na API e na interface, arquitetura hexagonal, tratamento de erros, testes |
-| Próxima etapa | Avaliação da qualidade da IA e finalização do projeto |
+| TP1 | Proposta e planejamento |
+| TP2 | Interface, scraping, API InfoDengue, upload/download |
+| TP3 | Multipáginas, FastAPI, preparação para LLM |
+| TP4 | IA local na API, arquitetura hexagonal, erros, testes |
+| **TP5** | Conversa com os dados (memória), dashboard final, sentimento da mídia, documentação e apresentação |

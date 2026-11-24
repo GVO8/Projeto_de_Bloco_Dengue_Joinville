@@ -1,6 +1,6 @@
 # Prontidão para LLM — **concluída no TP4** (modelo local integrado)
 
-> Status: o corpus e os prompts descritos abaixo agora alimentam o modelo **Qwen3-4B-Instruct-2507** pela rota `POST /noticias/{id}/processar`. Escolha do modelo: `escolha_modelo_llm.md`. Arquitetura: `arquitetura.md`. As quatro tarefas (resumo, sentimento, perguntas e respostas, relatório) estão implementadas; a **avaliação quantitativa** continua pendente (seção 4).
+> Status: o corpus e os prompts descritos abaixo agora alimentam o modelo **Qwen3-4B-Instruct-2507** pela rota `POST /noticias/{id}/processar`. Escolha do modelo: `escolha_modelo_llm.md`. Arquitetura: `arquitetura.md`. As quatro tarefas (resumo, sentimento, perguntas e respostas, relatório) estão implementadas, e o TP5 acrescentou a **conversa com os dados do InfoDengue** (memória conversacional). A **avaliação quantitativa** continua pendente (seção 4), assim como a **evidência de execução real** (`Docs/Evidencias/`).
 
 ## 1. Dados disponíveis → tarefas possíveis
 
