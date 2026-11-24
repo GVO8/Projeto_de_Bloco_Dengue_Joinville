@@ -1,3 +1,5 @@
 # Testes: python -m pip install -r requirements.txt -r requirements-dev.txt && python -m pytest
 pytest>=8
+reportlab>=4        # gerar o PDF do TP5 (Docs/Apresentacao/gerar_pdf.py)
+pypdf>=4            # testes do PDF
 httpx>=0.27
