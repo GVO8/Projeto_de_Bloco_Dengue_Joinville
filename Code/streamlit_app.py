@@ -9,10 +9,12 @@ st.set_page_config(page_title="Dengue em Múltiplas Dimensões — Joinville/SC"
 
 V = "dengue/adapters/inbound/ui_streamlit/views"
 st.navigation({
-    "Visão geral": [st.Page(f"{V}/inicio.py", title="Início", icon="📌", default=True)],
-    "Análises": [st.Page(f"{V}/painel.py", title="Painel InfoDengue", icon="📈"),
-                 st.Page(f"{V}/noticias.py", title="Notícias e IA", icon="📰")],
+    "Dashboard": [st.Page(f"{V}/dashboard.py", title="Dashboard", icon="📊", default=True),
+                  st.Page(f"{V}/chat.py", title="Converse com os dados", icon="💬")],
+    "Análises": [st.Page(f"{V}/noticias.py", title="Notícias e IA", icon="📰"),
+                 st.Page(f"{V}/painel.py", title="Alertas de 2026", icon="📈")],
     "Dados e API": [st.Page(f"{V}/upload.py", title="Upload e Download", icon="📂"),
                     st.Page(f"{V}/api_page.py", title="Explorar a API", icon="🔌")],
-    "Modelo": [st.Page(f"{V}/ia.py", title="Assistente de IA", icon="🤖")],
+    "Projeto": [st.Page(f"{V}/inicio.py", title="Sobre o projeto", icon="📌"),
+                st.Page(f"{V}/ia.py", title="Assistente de IA", icon="🤖")],
 }).run()

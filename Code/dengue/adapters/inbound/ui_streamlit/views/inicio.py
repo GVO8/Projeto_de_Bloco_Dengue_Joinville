@@ -1,34 +1,34 @@
 import streamlit as st
 
-st.title("🦟 Dengue em Múltiplas Dimensões — Joinville/SC")
-st.caption("TP4 · Projeto de IA Generativa e ESG · alinhado ao ODS 3 (Saúde e Bem-Estar)")
+st.title("📌 Sobre o projeto")
+st.caption("Projeto de Bloco · Ciência de Dados Aplicada · alinhado ao ODS 3 (Saúde e Bem-Estar)")
 
 c1, c2 = st.columns([2, 1])
 with c1:
     st.markdown(
         """
-        **Problema de negócio:** indicadores públicos de dengue para Joinville/SC existem, mas estão
-        dispersos e difíceis de interpretar. Este painel os reúne e, agora, usa uma **IA local** para
-        ajudar a ler as notícias.
+        **Problema:** a dengue é um problema de saúde pública crescente no Sul do Brasil, e os dados sobre ela existem, mas
+        exigem conhecimento técnico para serem consultados e interpretados — e quase não se sabe **o que a população está sendo levada a sentir** sobre o assunto.
 
-        **O que o app faz:**
-        - 📈 **Painel InfoDengue:** nível de alerta semanal, uma linha por nível.
-        - 📰 **Notícias:** em cada notícia, botões para **resumir, classificar o sentimento, perguntar e gerar relatório**
-          com um modelo de linguagem que roda no seu computador.
-        - 📂 **Upload e Download:** complementa os dados com CSVs no formato do InfoDengue.
-        - 🔌 **API FastAPI:** os mesmos dados e a IA, disponíveis por rotas HTTP.
+        **O que o projeto faz:**
+        - 📡 **Dados reais do InfoDengue** (Joinville/SC): casos por semana epidemiológica e nível de alerta. O InfoDengue já consolida
+          notificações do SINAN, dados climáticos e estimativas populacionais do IBGE.
+        - 📰 **A mídia como fonte:** notícias reais coletadas por *web scraping* e classificadas por uma IA local quanto à **preocupação** que transmitem
+          (análise de sentimento), um indicador indireto da preocupação veiculada à população.
+        - 💬 **Dados em linguagem natural:** qualquer pessoa pode perguntar *“qual foi o ano com mais casos?”* e receber uma resposta baseada nos dados,
+          sem saber programar — democratizando o acesso à informação.
 
-        **ODS:** 3 (Saúde e Bem-Estar), 11 (Cidades Sustentáveis), 17 (Parcerias e dados abertos).
+        **ODS:** 3 (Saúde e Bem-Estar, meta 3.3) · 16 (meta 16.10: acesso público à informação) · 17 (parcerias e dados abertos).
         """
     )
 with c2:
-    st.info("**Público-alvo (fictício)**\n\nPerfis hipotéticos de gestor de saúde pública e morador local, "
-            "sem contato ou validação com órgãos públicos reais.")
-    st.warning("As respostas da IA podem conter erros. Confira sempre a notícia original.")
+    st.info("**Público-alvo (fictício)**\n\nGestores de saúde pública e moradores interessados em entender a dengue em Joinville, "
+            "sem vínculo com órgãos públicos reais.")
+    st.warning("As respostas da IA podem conter erros. Os números, porém, são **calculados em código** a partir dos dados do InfoDengue.")
 
 st.subheader("Fontes e referências")
 st.markdown(
     "- [InfoDengue — API pública](https://info.dengue.mat.br/)\n"
     "- [NSC Total — notícias sobre Dengue](https://www.nsctotal.com.br/tag/dengue)\n"
-    "- [Modelo: Qwen3-4B-Instruct-2507 (GGUF)](https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF)"
+    "- [Modelo de IA: Qwen3-4B-Instruct-2507 (GGUF)](https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF)"
 )

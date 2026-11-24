@@ -90,3 +90,16 @@ def noticias_cache(_gateway, busca, versao: int):
 @st.cache_data(ttl=300)
 def texto_cache(_gateway, versao: int):
     return _gateway.texto_noticias()
+
+
+@st.cache_data(ttl=600, show_spinner="Consultando o InfoDengue...")
+def historico_cache(_gateway, ano_inicio, ano_fim, versao: int):
+    return _gateway.historico_infodengue(ano_inicio, ano_fim)
+
+
+@st.cache_data(ttl=120)
+def sentimentos_cache(_gateway, versao: int):
+    return _gateway.sentimentos()
+
+
+COR_SENTIMENTO = {"POSITIVO": "#2ecc71", "NEGATIVO": "#e74c3c", "NEUTRO": "#95a5a6", "NÃO CLASSIFICADO": "#bdc3c7"}

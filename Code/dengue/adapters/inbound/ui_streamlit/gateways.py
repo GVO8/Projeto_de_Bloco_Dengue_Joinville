@@ -34,17 +34,27 @@ class Gateway(ABC):
     def processar_noticia(self, noticia_id: int, operacao: str, pergunta: str | None = None) -> dict: ...
     @abstractmethod
     def estado(self) -> dict: ...
+    @abstractmethod
+    def historico_infodengue(self, ano_inicio: int | None = None, ano_fim: int | None = None) -> dict:
+        """{'serie': DataFrame, 'fatos': dict, 'requisicao': dict, 'canal': 'api'|'local'}"""
+    @abstractmethod
+    def sentimentos(self) -> pd.DataFrame: ...
+    @abstractmethod
+    def perguntar(self, sessao_id: str | None, pergunta: str) -> dict: ...
+    @abstractmethod
+    def encerrar_conversa(self, sessao_id: str | None) -> None: ...
 
 
 class ApiGateway(Gateway):
-    def __init__(self, url: str, http=requests, timeout_s: float = 5, timeout_ia_s: float = 900):
+    def __init__(self, url: str, http=requests, timeout_s: float = 5, timeout_ia_s: float = 900, timeout_chat_s: float = 1800):
         self._url, self._http, self._timeout, self._timeout_ia = url.rstrip("/"), http, timeout_s, timeout_ia_s
+        self._timeout_chat = timeout_chat_s
 
     def _chamar(self, metodo: str, caminho: str, *, timeout: float | None = None, **kw) -> dict | None:
         try:
             r = self._http.request(metodo, f"{self._url}{caminho}", timeout=timeout or self._timeout, **kw)
         except (requests.ConnectionError, requests.Timeout) as exc:
-            if isinstance(exc, requests.Timeout) and timeout == self._timeout_ia:
+            if isinstance(exc, requests.Timeout) and timeout in (self._timeout_ia, self._timeout_chat):
                 raise ErroRemoto({"codigo": "tempo_esgotado", "categoria": "ia",
                                   "mensagem": "A IA demorou mais do que o esperado e o aplicativo parou de esperar.",
                                   "sugestao": "Tente uma operação mais curta ou aumente o tempo de espera (DENGUE_LLM_TIMEOUT_S)."}, 504) from exc
@@ -83,6 +93,20 @@ class ApiGateway(Gateway):
     def estado(self):
         return self._chamar("GET", "/health")
 
+    def historico_infodengue(self, ano_inicio=None, ano_fim=None):
+        d = self._chamar("GET", "/infodengue/historico", params={"ano_inicio": ano_inicio, "ano_fim": ano_fim}, timeout=60)
+        return {"serie": pd.DataFrame(d["serie"]), "fatos": d["fatos"], "requisicao": d["requisicao"], "canal": "api"}
+
+    def sentimentos(self):
+        return pd.DataFrame(self._chamar("GET", "/sentimentos")["itens"])
+
+    def perguntar(self, sessao_id, pergunta):
+        return self._chamar("POST", "/chat", timeout=self._timeout_chat, json={"sessao_id": sessao_id, "pergunta": pergunta})
+
+    def encerrar_conversa(self, sessao_id):
+        if sessao_id:
+            self._chamar("DELETE", f"/chat/{sessao_id}")
+
 
 class LocalGateway(Gateway):
     def __init__(self, container: Container):
@@ -111,6 +135,21 @@ class LocalGateway(Gateway):
     def estado(self):
         raise ApiIndisponivelError(self._c.config.api_url)
 
+    def historico_infodengue(self, ano_inicio=None, ano_fim=None):
+        df, fatos, req = self._c.historico_infodengue.obter(ano_inicio, ano_fim)
+        serie = df.copy()
+        serie["ano"], serie["semana"] = serie["SE"] // 100, serie["SE"] % 100
+        return {"serie": serie, "fatos": fatos.estruturado, "requisicao": req.__dict__, "canal": "local"}
+
+    def sentimentos(self):
+        return pd.DataFrame([{**x.__dict__, "rotulo": x.rotulo} for x in self._c.sentimentos.listar()])
+
+    def perguntar(self, sessao_id, pergunta):
+        raise ApiIndisponivelError(self._c.config.api_url)
+
+    def encerrar_conversa(self, sessao_id):
+        return None
+
 
 class GatewayComAlternativa(Gateway):
     def __init__(self, api: Gateway, local: Gateway):
@@ -129,3 +168,11 @@ class GatewayComAlternativa(Gateway):
     def texto_noticias(self): return self._tentar("texto_noticias")
     def processar_noticia(self, *a, **k): return self._api.processar_noticia(*a, **k)  # só via API
     def estado(self): return self._api.estado()
+    def historico_infodengue(self, *a, **k): return self._tentar("historico_infodengue", *a, **k)
+    def sentimentos(self): return self._tentar("sentimentos")
+    def perguntar(self, *a, **k): return self._api.perguntar(*a, **k)               # só via API (usa o modelo)
+    def encerrar_conversa(self, sessao_id):
+        try:
+            self._api.encerrar_conversa(sessao_id)
+        except ApiIndisponivelError:
+            pass

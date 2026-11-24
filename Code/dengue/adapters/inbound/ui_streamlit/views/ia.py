@@ -3,6 +3,7 @@ import streamlit as st
 from dengue.adapters.inbound.ui_streamlit import componentes as ui
 from dengue.adapters.inbound.ui_streamlit.deps import obter_gateway
 from dengue.core.domain.erros import ApiIndisponivelError
+from dengue.core import prompts_chat
 from dengue.core.prompts import PROMPTS, VERSAO
 
 st.title("🤖 Assistente de IA (modelo local)")
@@ -23,3 +24,10 @@ with ui.protegido():
     for p in PROMPTS.values():
         with st.expander(p["titulo"]):
             st.code(p["template"], language="text")
+
+    st.subheader(f"Conversa com os dados (prompts v{prompts_chat.VERSAO})")
+    st.markdown("A pergunta passa por **duas chamadas ao modelo**: uma gera o plano da consulta ao InfoDengue (em JSON) e outra redige a resposta "
+                "a partir dos fatos calculados em código.")
+    for nome, template in prompts_chat.TEMPLATES.items():
+        with st.expander(f"Prompt: {nome}"):
+            st.code(template, language="text")
