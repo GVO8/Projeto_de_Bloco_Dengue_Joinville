@@ -118,6 +118,27 @@ class ContextoNumerico:
         )
 
 
+ROTULOS_SENTIMENTO = {"POSITIVO": "Tranquilizador", "NEGATIVO": "Preocupante", "NEUTRO": "Neutro", "NÃO CLASSIFICADO": "Não classificado"}
+
+
+@dataclass(frozen=True)
+class SentimentoNoticia:
+    """Tom da notícia quanto à preocupação com a dengue (indicador indireto da preocupação veiculada pela mídia)."""
+
+    noticia_id: int
+    titulo: str
+    classe: str                      # POSITIVO | NEGATIVO | NEUTRO | NÃO CLASSIFICADO
+    justificativa: str
+    modelo: str
+    tempo_segundos: float
+    analisado_em: str
+    data_publicacao: str | None = None
+
+    @property
+    def rotulo(self) -> str:
+        return ROTULOS_SENTIMENTO.get(self.classe, self.classe)
+
+
 @dataclass(frozen=True)
 class EstadoModelo:
     backend: str
@@ -141,6 +162,7 @@ class RespostaProcessamento:
     tempo_segundos: float
     avisos: tuple[str, ...] = ()
     aviso_padrao: str = AVISO_PADRAO
+    metricas: dict | None = None
 
     @property
     def nome_operacao(self) -> str:

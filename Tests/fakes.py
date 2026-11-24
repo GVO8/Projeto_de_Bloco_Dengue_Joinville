@@ -83,3 +83,51 @@ class ColetorFalso(ColetorNoticias):
 
     def coletar(self, max_paginas):
         return self.artigos
+
+
+# ------------------------------------------------------------------ conversa com os dados
+def serie_conhecida() -> "pd.DataFrame":
+    """2022–2026 (2026 até a SE 40), com respostas conhecidas:
+    mais casos = 2024 (5.600), menos = 2023 (104); pico de 2026 = SE 202620 (90 casos);
+    2026 x 2025 nas SE 1–40: 1.260 x 840 → +50,0%."""
+    linhas = []
+    for ano, semanas, base, pico_semana, pico in ((2022, 52, 10, 5, 10), (2023, 52, 2, 3, 2), (2024, 52, 100, 14, 500),
+                                                  (2025, 52, 20, 10, 60), (2026, 40, 30, 20, 90)):
+        for w in range(1, semanas + 1):
+            linhas.append({"SE": ano * 100 + w, "data_iniSE": (pd.Timestamp(f"{ano}-01-01") + pd.Timedelta(weeks=w - 1)).strftime("%Y-%m-%d"),
+                           "casos": pico if w == pico_semana else base, "nivel": 1 + w % 4})
+    return pd.DataFrame(linhas)
+
+
+class ConsultaFalsa:
+    """Implementa ConsultaInfoDengue sem rede. Recorta a série conhecida ao período pedido."""
+
+    def __init__(self, df=None, erro: Exception | None = None):
+        from dengue.adapters.outbound.infodengue import montar_url
+        from dengue.core.domain.chat import GEOCODE_JOINVILLE, RequisicaoInfoDengue
+
+        self.df, self.erro, self.chamadas = (df if df is not None else serie_conhecida()), erro, []
+        self._montar_url, self._Req, self._geo = montar_url, RequisicaoInfoDengue, GEOCODE_JOINVILLE
+
+    def consultar(self, ano_inicio, ano_fim):
+        self.chamadas.append((ano_inicio, ano_fim))
+        if self.erro:
+            raise self.erro
+        d = self.df[(self.df["SE"] // 100 >= ano_inicio) & (self.df["SE"] // 100 <= ano_fim)].reset_index(drop=True)
+        url = self._montar_url(geocode=self._geo, ew_start=1, ew_end=53, ey_start=ano_inicio, ey_end=ano_fim)
+        return d, self._Req(url, self._geo, "dengue", ano_inicio, ano_fim)
+
+
+def modelo_chat(plano: str | dict | None = None, resposta: str = "Resposta redigida pela IA."):
+    """ModeloFake que devolve `plano` (JSON) ao planejador e `resposta` ao redator. plano=None → JSON padrão válido."""
+    import json
+
+    from dengue.adapters.outbound.llm_fake import ModeloFake
+
+    padrao = {"assunto_valido": True, "cidade": "nao_citada", "intencao": "total", "ano_inicio": None, "ano_fim": None}
+    saida_plano = plano if isinstance(plano, str) else json.dumps(plano or padrao)
+
+    def responder(prompt: str) -> str:
+        return saida_plano if "Converta a pergunta do usuário" in prompt else resposta
+
+    return ModeloFake(responder)

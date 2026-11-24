@@ -6,8 +6,9 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 
+from dengue.core.domain.chat import RequisicaoInfoDengue, Turno
 from dengue.core.domain.modelos import (
-    ArtigoColetado, ContextoNumerico, Noticia, NoticiaCompleta, TrechoCorpus,
+    ArtigoColetado, ContextoNumerico, Noticia, NoticiaCompleta, SentimentoNoticia, TrechoCorpus,
 )
 
 
@@ -63,3 +64,34 @@ class ArmazenamentoCorpus(ABC):
 
     @abstractmethod
     def obter_contexto(self) -> ContextoNumerico: ...
+
+
+class ConsultaInfoDengue(ABC):
+    """Consulta o InfoDengue para Joinville (dengue). O município e a doença são fixos por projeto."""
+
+    @abstractmethod
+    def consultar(self, ano_inicio: int, ano_fim: int) -> tuple[pd.DataFrame, RequisicaoInfoDengue]:
+        """Série semanal (semanas 1–53) de ano_inicio a ano_fim e a requisição que a originou."""
+
+
+class RepositorioConversas(ABC):
+    @abstractmethod
+    def obter(self, sessao_id: str) -> list[Turno]: ...
+
+    @abstractmethod
+    def existe(self, sessao_id: str) -> bool: ...
+
+    @abstractmethod
+    def adicionar(self, sessao_id: str, turno: Turno) -> None: ...
+
+    @abstractmethod
+    def limpar(self, sessao_id: str) -> None: ...
+
+
+class RepositorioSentimentos(ABC):
+    @abstractmethod
+    def listar(self) -> list[SentimentoNoticia]: ...
+
+    @abstractmethod
+    def salvar(self, sentimento: SentimentoNoticia) -> None:
+        """Insere ou substitui (pela notícia)."""

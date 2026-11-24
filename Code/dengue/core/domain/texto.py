@@ -62,6 +62,11 @@ _CLASSE = re.compile(r"\b(POSITIVO|NEGATIVO|NEUTRO)\b", re.IGNORECASE)
 _PRIMEIRA_FRASE = re.compile(r"(.+?[.!?])(\s|$)", re.DOTALL)
 
 
+def extrair_classe_sentimento(texto: str) -> str:
+    m = _CLASSE.search(texto)
+    return m.group(1).upper() if m else "NÃO CLASSIFICADO"
+
+
 def extrair_resumo_final(operacao: Operacao, texto: str, limite: int = 220) -> str:
     """
     Pequeno resumo exibido junto do resultado: classe final (sentimento) ou a
@@ -69,8 +74,7 @@ def extrair_resumo_final(operacao: Operacao, texto: str, limite: int = 220) -> s
     """
     texto = texto.strip()
     if operacao == Operacao.SENTIMENTO:
-        m = _CLASSE.search(texto)
-        return f"Sentimento: {m.group(1).upper()}" if m else "Sentimento: NÃO CLASSIFICADO"
+        return f"Sentimento: {extrair_classe_sentimento(texto)}"
     m = _PRIMEIRA_FRASE.match(" ".join(texto.split()))
     frase = m.group(1) if m else " ".join(texto.split())
     return frase if len(frase) <= limite else frase[: limite - 1].rstrip() + "…"

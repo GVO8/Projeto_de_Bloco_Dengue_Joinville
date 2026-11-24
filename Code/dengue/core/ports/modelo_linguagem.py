@@ -17,5 +17,9 @@ class ModeloLinguagem(ABC):
         """Informa se o modelo está pronto, sem carregá-lo na memória."""
 
     @abstractmethod
-    def gerar(self, prompt: str, *, max_tokens: int) -> str:
-        """Gera texto. Deve levantar ErroDeIA (nunca exceções cruas) em caso de falha."""
+    def gerar(self, prompt: str, *, max_tokens: int, formato_json: bool = False) -> str:
+        """Gera texto (ou um objeto JSON, se `formato_json`). Deve levantar ErroDeIA, nunca exceções cruas."""
+
+    def ultimas_metricas(self) -> dict | None:
+        """Métricas da última geração (tempos, tokens), se o adaptador as medir."""
+        return None

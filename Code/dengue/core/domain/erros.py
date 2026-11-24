@@ -183,6 +183,48 @@ class RespostaVaziaError(ErroDeIA):
         )
 
 
+# --------------------------- conversa com os dados ---------------------------
+class PerguntaInvalidaError(EntradaInvalidaError):
+    codigo = "pergunta_invalida"
+
+    def __init__(self, motivo: str):
+        super().__init__(motivo, "Escreva uma pergunta curta (até 300 caracteres) sobre casos de dengue em Joinville.")
+
+
+class SessaoNaoEncontradaError(ErroDengue):
+    codigo, categoria, status_http = "sessao_nao_encontrada", "dados", 404
+
+    def __init__(self, sessao_id: str):
+        super().__init__(
+            "Não existe uma conversa com esse identificador (ela pode ter sido encerrada ou a API reiniciada).",
+            "Inicie uma nova conversa enviando uma pergunta sem informar o identificador.",
+            detalhe=sessao_id,
+        )
+
+
+class InfoDengueIndisponivelError(ErroDengue):
+    codigo, categoria, status_http = "infodengue_indisponivel", "dados", 503
+
+    def __init__(self, detalhe: str | None = None):
+        super().__init__(
+            "Não foi possível consultar o InfoDengue agora.",
+            "Verifique sua conexão com a internet e tente de novo em instantes. O serviço do InfoDengue também pode estar fora do ar.",
+            detalhe=detalhe,
+        )
+
+
+class ConsultaSemDadosError(ErroDengue):
+    codigo, categoria, status_http = "consulta_sem_dados", "dados", 404
+
+    def __init__(self, ano_inicio: int | None = None, ano_fim: int | None = None, detalhe: str | None = None):
+        periodo = f" para {ano_inicio}–{ano_fim}" if ano_inicio else ""
+        super().__init__(
+            f"O InfoDengue não devolveu dados de Joinville{periodo}.",
+            "Tente outro período (ex.: o ano atual ou o anterior).",
+            detalhe=detalhe,
+        )
+
+
 # --------------------------- cliente da API (UI) ---------------------------
 class ApiIndisponivelError(ErroDengue):
     codigo, categoria, status_http = "api_indisponivel", "sistema", 503

@@ -5,7 +5,7 @@ Cada operação declara o prompt, os dados que o alimentam, o limite de tokens
 da resposta e se exige uma pergunta do usuário. Os templates usam str.format.
 """
 
-VERSAO = "0.2"
+VERSAO = "0.3"
 
 PROMPTS = {
     "resumo": {
@@ -21,14 +21,15 @@ PROMPTS = {
         ),
     },
     "sentimento": {
-        "titulo": "Classificação de sentimento",
+        "titulo": "Classificação de sentimento (preocupação com a dengue)",
         "dados_de_entrada": "Título + resumo da notícia",
         "max_tokens": 120,
         "exige_pergunta": False,
         "template": (
-            "Classifique o sentimento do texto abaixo, do ponto de vista da "
-            "saúde pública, como POSITIVO, NEGATIVO ou NEUTRO. Responda apenas "
-            "com a classe e uma justificativa de uma frase.\n\n"
+            "Classifique o sentimento da notícia abaixo quanto à preocupação com a dengue, do ponto de vista da população: "
+            "NEGATIVO se ela transmite preocupação, risco ou piora; POSITIVO se transmite alívio, melhora ou controle; "
+            "NEUTRO se for apenas informativa. Responda apenas com a classe (POSITIVO, NEGATIVO ou NEUTRO) "
+            "e uma justificativa de uma frase.\n\n"
             "Título: {titulo}\nResumo: {resumo}\n\nClasse:"
         ),
     },

@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime
 
 from dengue.core.domain.erros import (
     CorpusIndisponivelError, NoticiaNaoEncontradaError, OperacaoInvalidaError, PerguntaObrigatoriaError,
 )
-from dengue.core.domain.modelos import NoticiaCompleta, Operacao, RespostaProcessamento
-from dengue.core.domain.texto import extrair_resumo_final, limitar_texto
+from dengue.core.domain.modelos import NoticiaCompleta, Operacao, RespostaProcessamento, SentimentoNoticia
+from dengue.core.domain.texto import extrair_classe_sentimento, extrair_resumo_final, limitar_texto
 from dengue.core.ports.modelo_linguagem import ModeloLinguagem
-from dengue.core.ports.repositorios import ArmazenamentoCorpus, RepositorioNoticias
+from dengue.core.ports.repositorios import ArmazenamentoCorpus, RepositorioNoticias, RepositorioSentimentos
 from dengue.core.prompts import montar_prompt
 from dengue.core.services.corpus import PrepararCorpus
 
@@ -25,9 +26,12 @@ class ProcessarNoticia:
         noticias: RepositorioNoticias,
         modelo: ModeloLinguagem,
         max_chars_entrada: int = 8000,
+        sentimentos: RepositorioSentimentos | None = None,
+        agora=datetime.now,
     ):
         self._corpus, self._preparar, self._noticias = corpus, preparar_corpus, noticias
         self._modelo, self._max_chars = modelo, max_chars_entrada
+        self._sentimentos, self._agora = sentimentos, agora
 
     # ------------------------------------------------------------------
     def executar(self, noticia_id: int, operacao: str | Operacao, pergunta: str | None = None) -> RespostaProcessamento:
@@ -53,10 +57,16 @@ class ProcessarNoticia:
         if contexto.dados_sinteticos and op in (Operacao.QA, Operacao.RELATORIO):
             avisos.append("Os números do InfoDengue usados aqui são dados de exemplo (sintéticos), não oficiais.")
 
+        if op == Operacao.SENTIMENTO and self._sentimentos is not None:
+            self._sentimentos.salvar(SentimentoNoticia(
+                noticia_id=noticia.id, titulo=noticia.titulo, classe=extrair_classe_sentimento(resultado), justificativa=resultado,
+                modelo=self._modelo.nome, tempo_segundos=round(tempo, 2), analisado_em=self._agora().isoformat(timespec="seconds"),
+                data_publicacao=noticia.data_publicacao,
+            ))
         return RespostaProcessamento(
             noticia_id=noticia.id, titulo=noticia.titulo, operacao=op, resultado=resultado,
             resumo_final=extrair_resumo_final(op, resultado), modelo=self._modelo.nome,
-            tempo_segundos=round(tempo, 2), avisos=tuple(avisos),
+            tempo_segundos=round(tempo, 2), avisos=tuple(avisos), metricas=self._modelo.ultimas_metricas(),
         )
 
     # ------------------------------------------------------------------
